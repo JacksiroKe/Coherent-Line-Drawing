@@ -16,30 +16,29 @@ public:
     virtual bool OnInit();
 };
 
-class BasicDrawPane : public wxPanel
+class DrawPane : public wxPanel
 {
 
 public:
-    BasicDrawPane(wxPanel *parent, cv::Size, bool canUndo);
+    DrawPane(wxPanel *, cv::Size);
 
-    CLD cld;
-    PP processing;
-    cv::Mat dis;
-    cv::Mat temp;
-    std::string processingS;
-    void paintEvent(wxPaintEvent &evt);
-    void paintNow(bool);
-    void render(wxDC &dc, bool);
+    void render();
+    void set_mode(std::string);
+    cv::Mat &image();
+    CLD &cld();
     DECLARE_EVENT_TABLE()
+
 private:
-    bool activateDraw;
+    std::string mode_;
+    CLD cld_;
+    cv::Mat dis_;
 };
 
 class MyFrame : public wxFrame
 {
 public:
     MyFrame(const wxString &title, const wxPoint &pos, const wxSize &size);
-    BasicDrawPane *drawPane;
+    DrawPane *drawPane;
     wxPanel *dp; // drawpane Container
     wxSlider *slider_rho;
     wxSlider *slider_ETFkernel;
@@ -52,9 +51,8 @@ public:
     wxStaticText *slider_sigma2_t;
     wxStaticText *slider_t_t;
     void addlog(wxString info, const wxColour &color);
-    void activateRenderLoop(bool on);
 
-protected:
+private:
     bool render_loop_on;
     int ETF_kernel;
     int ETF_iteration;
@@ -67,28 +65,25 @@ protected:
     wxButton *iterativeFDoG;
     wxComboBox *processingBox;
 
+    void SetRenderingState(bool on);
+
     void OnStart(wxCommandEvent &event);
     void OnClean(wxCommandEvent &event);
     void OnSolveIt(wxCommandEvent &event);
     void OnRefineETF(wxCommandEvent &event);
     void OnIterativeFDoG(wxCommandEvent &event);
-
     void OnProcessingBox(wxCommandEvent &event);
-
-
     void OnSliderRho(wxCommandEvent &event);
     void OnSliderETFkernel(wxCommandEvent &event);
     void OnSliderSigmaM(wxCommandEvent &event);
     void OnSliderSigmaC(wxCommandEvent &event);
     void OnSliderTau(wxCommandEvent &event);
-
     void OnOpenSrc(wxCommandEvent &event);
     void OnSaveResult(wxCommandEvent &event);
-
     void OnExit(wxCommandEvent &event);
     void OnAbout(wxCommandEvent &event);
     void OnToggleLog(wxCommandEvent &event);
-    void onIdle(wxIdleEvent &evt);
+    void OnIdle(wxIdleEvent &evt);
     wxDECLARE_EVENT_TABLE();
 };
 

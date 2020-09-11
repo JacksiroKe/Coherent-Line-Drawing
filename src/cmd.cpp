@@ -1,7 +1,7 @@
 #include <boost/program_options.hpp>
 #include <opencv2/opencv.hpp>
-#include "CLD.h"
-#include "postProcessing.h"
+#include "include/CLD.h"
+#include "include/postProcessing.h"
 
 void print_parameters(const boost::program_options::variables_map &vm)
 {
@@ -89,16 +89,20 @@ int main(int argc, char *argv[])
     std::cout << "Result image save at " << output_path << std::endl;
 
     if (generate_post_processed_images) {
-        PP utils{};
-
         // Generate flow-field visualization
-        cv::Mat vis_etf = utils.visualizeETF(cld.etf.flowField);
+        cv::Mat vis_etf = postprocess::visualizeETF(cld.etf.flowField);
         vis_etf.convertTo(vis_etf, CV_8UC1, 255);
         cv::cvtColor(vis_etf, vis_etf, CV_GRAY2BGR);
         cv::imwrite("visualize-etf.jpg", vis_etf);
 
+        // Generate flow-field arrow direction visualization
+        cv::Mat vis_flow = postprocess::visualizeFlowfield(cld.etf.flowField);
+        vis_flow.convertTo(vis_flow, CV_8UC3, 255);
+        cv::cvtColor(vis_flow, vis_flow, CV_RGB2BGR);
+        cv::imwrite("arrow-etf.jpg", vis_flow);
+
         // Generate Anti-alias coherent line drawing
-        cv::Mat anti_alias = utils.antiAlias(cld.result.clone());
+        cv::Mat anti_alias = postprocess::antiAlias(cld.result.clone());
         cv::imwrite("anti-alias.jpg", anti_alias);
     }
 

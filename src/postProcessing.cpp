@@ -1,10 +1,12 @@
 #include <opencv2/opencv.hpp>
-#include "postProcessing.h"
+#include "include/const.h"
+#include "include/postProcessing.h"
 
-PP::PP() {}
+namespace postprocess
+{
 
 // visualize the ETF
-cv::Mat PP::visualizeETF(const cv::Mat &flowfield)
+cv::Mat visualizeETF(const cv::Mat &flowfield)
 {
     cv::Mat noise = cv::Mat::zeros(cv::Size(flowfield.cols / 2, flowfield.rows / 2), CV_32F);
     cv::Mat dst   = cv::Mat::zeros(flowfield.size(), CV_32F);
@@ -18,17 +20,17 @@ cv::Mat PP::visualizeETF(const cv::Mat &flowfield)
 
 
 #pragma omp parallel for
-    for (int i = 0; i < nRows; i++) {
-        for (int j = 0; j < nCols; j++) {
+    for (int i = 0; i < nRows; ++i) {
+        for (int j = 0; j < nCols; ++j) {
             float w_sum = 0.0;
             float x     = i;
             float y     = j;
-            for (int k = 0; k < s; k++) {
+            for (int k = 0; k < s; ++k) {
                 cv::Vec3f v = cv::normalize(flowfield.at<cv::Vec3f>(int(x + nRows) % nRows, int(y + nCols) % nCols));
                 if (v[0] != 0) x = x + (abs(v[0]) / float(abs(v[0]) + abs(v[1]))) * (abs(v[0]) / v[0]);
                 if (v[1] != 0) y = y + (abs(v[1]) / float(abs(v[0]) + abs(v[1]))) * (abs(v[1]) / v[1]);
                 const float r2 = k * k;
-                const float w  = (1 / (M_PI * sigma)) * exp(-(r2) / sigma);
+                const float w  = (1 / (constant::PI * sigma)) * exp(-(r2) / sigma);
                 int xx         = (int(x) + nRows) % nRows;
                 int yy         = (int(y) + nCols) % nCols;
                 dst.at<float>(i, j) += w * noise.at<float>(xx, yy);
@@ -37,13 +39,13 @@ cv::Mat PP::visualizeETF(const cv::Mat &flowfield)
 
             x = i;
             y = j;
-            for (int k = 0; k < s; k++) {
+            for (int k = 0; k < s; ++k) {
                 cv::Vec3f v = -cv::normalize(flowfield.at<cv::Vec3f>(int(x + nRows) % nRows, int(y + nCols) % nCols));
                 if (v[0] != 0) x = x + (abs(v[0]) / float(abs(v[0]) + abs(v[1]))) * (abs(v[0]) / v[0]);
                 if (v[1] != 0) y = y + (abs(v[1]) / float(abs(v[0]) + abs(v[1]))) * (abs(v[1]) / v[1]);
 
                 const float r2 = k * k;
-                const float w  = (1 / (M_PI * sigma)) * exp(-(r2) / sigma);
+                const float w  = (1 / (constant::PI * sigma)) * exp(-(r2) / sigma);
                 dst.at<float>(i, j) += w * noise.at<float>(int(x + nRows) % nRows, int(y + nCols) % nCols);
                 w_sum += w;
             }
@@ -55,9 +57,10 @@ cv::Mat PP::visualizeETF(const cv::Mat &flowfield)
 }
 
 // visualize ETF by drawing red arrowline
-void PP::visualizeFlowfield(const cv::Mat &flowfield, cv::Mat &dst)
+cv::Mat visualizeFlowfield(const cv::Mat &flowfield)
 {
     constexpr int resolution = 10;
+    cv::Mat dst{flowfield.size(), CV_32FC3, cv::Scalar(1, 1, 1)};
 
     for (int i = 0; i < dst.rows; i += resolution) {
         for (int j = 0; j < dst.cols; j += resolution) {
@@ -65,12 +68,14 @@ void PP::visualizeFlowfield(const cv::Mat &flowfield, cv::Mat &dst)
             const cv::Point2f p1(j, i);
             const cv::Point2f p2(j + v[1] * 5, i + v[0] * 5);
 
-            cv::arrowedLine(dst, p1, p2, cv::Scalar(255, 0, 0), 1.5, 8, 0, 0.3);
+            cv::arrowedLine(dst, p1, p2, cv::Scalar(1, 0, 0), 1.5, 8, 0, 0.3);
         }
     }
+
+    return dst;
 }
 
-cv::Mat PP::antiAlias(const cv::Mat &src)
+cv::Mat antiAlias(const cv::Mat &src)
 {
     constexpr int BLUR_SIZE = 3;
     cv::Mat dst{cv::Mat::zeros(src.size(), CV_32F)};
@@ -79,3 +84,5 @@ cv::Mat PP::antiAlias(const cv::Mat &src)
     cv::GaussianBlur(dst, dst, cv::Size(BLUR_SIZE, BLUR_SIZE), 0, 0);
     return dst;
 }
+
+} // namespace postprocess

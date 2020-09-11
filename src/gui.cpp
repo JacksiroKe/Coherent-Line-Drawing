@@ -1,7 +1,4 @@
-#include <ctime>
-#include <fstream>
-#include <iostream>
-#include "gui.h"
+#include "include/gui.h"
 
 #define MODE_ORIGINIAL_IMAGE "Original Image"
 #define MODE_ETF "ETF"
@@ -100,7 +97,7 @@ MyFrame::MyFrame(const wxString &title, const wxPoint &pos, const wxSize &size)
     dp->SetSizer(dps);
 
 
-    drawPane = new BasicDrawPane(dp, cv::Size(256, 256), true);
+    drawPane = new DrawPane(dp, cv::Size(256, 256));
     dps->Add(drawPane, 1, wxEXPAND);
 
     // wxTextCtrl: http://docs.wxwidgets.org/trunk/classwx_text_ctrl.html
@@ -135,32 +132,32 @@ MyFrame::MyFrame(const wxString &title, const wxPoint &pos, const wxSize &size)
         new wxStaticBox(controlpanel, -1, wxT("Line Parameters"), wxDefaultPosition, wxDefaultSize, wxTE_RICH2);
     wxStaticBoxSizer *st_paint_sizer = new wxStaticBoxSizer(st_paint, wxVERTICAL);
 
-    s.Printf("Noise (rho) : %.3f", drawPane->cld.rho);
+    s.Printf("Noise (rho): %.3f", drawPane->cld().rho);
     slider_rho_t = new wxStaticText(controlpanel, SLIDER_RHO_T, s, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_rho_t, 0, wxEXPAND | wxLEFT, 10);
     slider_rho = new wxSlider(
-        controlpanel, SLIDER_RHO, int(drawPane->cld.rho * 10000), 9000, 10000, wxDefaultPosition, wxDefaultSize, 0);
+        controlpanel, SLIDER_RHO, int(drawPane->cld().rho * 10000), 9000, 10000, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_rho, 0, wxEXPAND | wxLEFT, 10);
 
-    s.Printf("Degree of coherence (sigma_m): %.3f", drawPane->cld.sigma_m);
+    s.Printf("Degree of coherence (sigma_m): %.3f", drawPane->cld().sigma_m);
     slider_sigma1_t = new wxStaticText(controlpanel, SLIDER_SIGMA_M_T, s, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_sigma1_t, 0, wxEXPAND | wxLEFT, 10);
-    slider_sigma1 = new wxSlider(controlpanel, SLIDER_SIGMA_M, int(drawPane->cld.sigma_m * 1000), 10, 10000,
+    slider_sigma1 = new wxSlider(controlpanel, SLIDER_SIGMA_M, int(drawPane->cld().sigma_m * 1000), 10, 10000,
         wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_sigma1, 0, wxEXPAND | wxLEFT, 10);
 
-    s.Printf("Line width (sigma_c): %.3f", drawPane->cld.sigma_c);
+    s.Printf("Line width (sigma_c): %.3f", drawPane->cld().sigma_c);
     slider_sigma2_t = new wxStaticText(controlpanel, SLIDER_SIGMA_C_T, s, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_sigma2_t, 0, wxEXPAND | wxLEFT, 10);
-    slider_sigma2 = new wxSlider(controlpanel, SLIDER_SIGMA_C, int(drawPane->cld.sigma_c * 1000), 10, 10000,
+    slider_sigma2 = new wxSlider(controlpanel, SLIDER_SIGMA_C, int(drawPane->cld().sigma_c * 1000), 10, 10000,
         wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_sigma2, 0, wxEXPAND | wxLEFT, 10);
 
-    s.Printf("Thresholding (tau) : %.3f", drawPane->cld.tau);
+    s.Printf("Thresholding (tau): %.3f", drawPane->cld().tau);
     slider_t_t = new wxStaticText(controlpanel, SLIDER_TAU_T, s, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_t_t, 0, wxEXPAND | wxLEFT, 10);
     slider_t = new wxSlider(
-        controlpanel, SLIDER_TAU, int(drawPane->cld.tau * 10000), 4000, 10000, wxDefaultPosition, wxDefaultSize, 0);
+        controlpanel, SLIDER_TAU, int(drawPane->cld().tau * 10000), 4000, 10000, wxDefaultPosition, wxDefaultSize, 0);
     st_paint_sizer->Add(slider_t, 0, wxEXPAND | wxLEFT, 10);
 
 
@@ -202,7 +199,7 @@ void MyFrame::OnToggleLog(wxCommandEvent &event)
 void MyFrame::OnOpenSrc(wxCommandEvent &event)
 {
     render_loop_on = false;
-    activateRenderLoop(render_loop_on);
+    SetRenderingState(render_loop_on);
     wxFileDialog openFileDialog(this, _("Open image file"), "", "", "image files (*.bmp;*.png;*.jpg)|*.bmp;*.png;*.jpg",
         wxFD_OPEN | wxFD_FILE_MUST_EXIST);
     wxString s;
@@ -212,7 +209,7 @@ void MyFrame::OnOpenSrc(wxCommandEvent &event)
         return; // the user changed idea...
     } else {
         processingBox->SetValue(MODE_ORIGINIAL_IMAGE);
-        drawPane->processingS = MODE_ORIGINIAL_IMAGE;
+        drawPane->set_mode(MODE_ORIGINIAL_IMAGE);
 
         s.Printf("Load Img - %s", openFileDialog.GetFilename());
         addlog(s, wxColour(*wxBLUE));
@@ -227,14 +224,14 @@ void MyFrame::OnOpenSrc(wxCommandEvent &event)
         wxLogError("Cannot open file '%s'.", openFileDialog.GetPath());
         return;
     }
-    drawPane->cld.readSrc((const char *)openFileDialog.GetPath().mb_str());
+    drawPane->cld().readSrc((const char *)openFileDialog.GetPath().mb_str());
 
-    wxSize img(drawPane->cld.originalImg.cols, drawPane->cld.originalImg.rows);
+    wxSize img(drawPane->cld().originalImg.cols, drawPane->cld().originalImg.rows);
     dp->SetMinSize(img);
     this->Layout();
 
     render_loop_on = true;
-    activateRenderLoop(render_loop_on);
+    SetRenderingState(render_loop_on);
     ETF_iteration = FDoG_iteration = 0;
     s.Printf("ETF: %d iterations", ETF_iteration);
     SetStatusText(s, 1);
@@ -254,8 +251,9 @@ void MyFrame::OnSaveResult(wxCommandEvent &event)
         return;
     }
 
-    cv::cvtColor(drawPane->dis, drawPane->dis, CV_BGR2RGB);
-    cv::imwrite((const char *)saveFileDialog.GetPath().mb_str(), drawPane->dis);
+    cv::Mat res = drawPane->image().clone();
+    cv::cvtColor(drawPane->image(), res, CV_BGR2RGB);
+    cv::imwrite((const char *)saveFileDialog.GetPath().mb_str(), res);
 }
 
 
@@ -263,16 +261,16 @@ void MyFrame::OnSaveResult(wxCommandEvent &event)
 void MyFrame::OnStart(wxCommandEvent &event)
 {
     render_loop_on = !render_loop_on;
-    activateRenderLoop(render_loop_on);
+    SetRenderingState(render_loop_on);
 }
 
 void MyFrame::OnClean(wxCommandEvent &event)
 {
-    drawPane->cld.init(cv::Size(300, 300));
+    drawPane->cld().init(cv::Size(300, 300));
     ETF_iteration = FDoG_iteration = 0;
-    drawPane->paintNow(true); //execute clean action
+    drawPane->render();
 
-    wxSize img(drawPane->cld.originalImg.cols, drawPane->cld.originalImg.rows);
+    wxSize img(drawPane->cld().originalImg.cols, drawPane->cld().originalImg.rows);
     dp->SetMinSize(img);
     this->Layout();
 
@@ -290,14 +288,14 @@ void MyFrame::OnClean(wxCommandEvent &event)
 void MyFrame::OnSolveIt(wxCommandEvent &event)
 {
     addlog("[CLD] Computing CLD...", wxColour(*wxBLUE));
-    drawPane->cld.genCLD();
+    drawPane->cld().genCLD();
     addlog("[CLD] done", wxColour(*wxBLUE));
 }
 
 void MyFrame::OnRefineETF(wxCommandEvent &event)
 {
     addlog("[ETF] Refining ETF...", wxColour(*wxBLUE));
-    (drawPane->cld).etf.refine_ETF(ETF_kernel);
+    (drawPane->cld()).etf.refine_ETF(ETF_kernel);
     addlog("[ETF] Done", wxColour(*wxBLUE));
 
     wxString s;
@@ -308,38 +306,34 @@ void MyFrame::OnRefineETF(wxCommandEvent &event)
 void MyFrame::OnIterativeFDoG(wxCommandEvent &event)
 {
     addlog("[CLD] Iterative FDoG...", wxColour(*wxBLUE));
-    (drawPane->cld).combineImage();
-    (drawPane->cld).genCLD();
+    (drawPane->cld()).combineImage();
+    (drawPane->cld()).genCLD();
     addlog("[CLD] Done", wxColour(*wxBLUE));
 
     wxString s;
     s.Printf("FDoG: %d iterations", ++FDoG_iteration);
     SetStatusText(s, 2);
-    drawPane->paintNow(true);
+    drawPane->render();
 }
 
 //Comboboxes
 void MyFrame::OnProcessingBox(wxCommandEvent &event)
 {
-    wxString s            = processingBox->GetValue();
-    drawPane->processingS = s;
+    std::string s = processingBox->GetValue().ToStdString();
+    drawPane->set_mode(s);
 
-    if (s == MODE_ETF || s == MODE_ETF_DEBUG) {
-        render_loop_on = true;
-    } else {
-        render_loop_on = false;
-    }
+    render_loop_on = (s == MODE_ETF) || (s == MODE_ETF_DEBUG);
 
     if (s == MODE_CLD) {
-        drawPane->cld.genCLD();
+        drawPane->cld().genCLD();
         wxString s;
         s.Printf("FDoG: %d iterations", FDoG_iteration);
         SetStatusText(s, 2);
     }
 
     addlog("[Mode Changed] " + s, wxColour(*wxBLACK));
-    drawPane->paintNow(true);
-    activateRenderLoop(render_loop_on);
+    drawPane->render();
+    SetRenderingState(render_loop_on);
 }
 
 //Slides: Pattern Parameter
@@ -347,54 +341,52 @@ void MyFrame::OnSliderETFkernel(wxCommandEvent &event)
 {
     wxString s;
     ETF_kernel = slider_ETFkernel->GetValue();
-    s.Printf("ETF kernel size : %d", ETF_kernel);
+    s.Printf("ETF kernel size: %d", ETF_kernel);
     slider_ETFkernel_t->SetLabel(s);
-
-    //drawPane->cld.genCLD();
 }
 
 void MyFrame::OnSliderRho(wxCommandEvent &event)
 {
     wxString s;
-    drawPane->cld.rho = slider_rho->GetValue() / 10000.0;
-    s.Printf("Noise(rho) : %.3f", drawPane->cld.rho);
+    drawPane->cld().rho = slider_rho->GetValue() / 10000.0;
+    s.Printf("Noise (rho): %.3f", drawPane->cld().rho);
     slider_rho_t->SetLabel(s);
 
-    drawPane->cld.genCLD();
-    drawPane->paintNow(true); //execute action
+    drawPane->cld().genCLD();
+    drawPane->render();
 }
 
 void MyFrame::OnSliderSigmaM(wxCommandEvent &event)
 {
     wxString s;
-    drawPane->cld.sigma_m = slider_sigma1->GetValue() / 1000.0;
-    s.Printf("Degree of coherence(sigma_m): %.3f", drawPane->cld.sigma_m);
+    drawPane->cld().sigma_m = slider_sigma1->GetValue() / 1000.0;
+    s.Printf("Degree of coherence (sigma_m): %.3f", drawPane->cld().sigma_m);
     slider_sigma1_t->SetLabel(s);
 
-    drawPane->cld.genCLD();
-    drawPane->paintNow(true); //execute action
+    drawPane->cld().genCLD();
+    drawPane->render();
 }
 
 void MyFrame::OnSliderSigmaC(wxCommandEvent &event)
 {
     wxString s;
-    drawPane->cld.sigma_c = slider_sigma2->GetValue() / 1000.0;
-    s.Printf("Line width(sigma_c): %.3f", drawPane->cld.sigma_c);
+    drawPane->cld().sigma_c = slider_sigma2->GetValue() / 1000.0;
+    s.Printf("Line width (sigma_c): %.3f", drawPane->cld().sigma_c);
     slider_sigma2_t->SetLabel(s);
 
-    drawPane->cld.genCLD();
-    drawPane->paintNow(true); //execute action
+    drawPane->cld().genCLD();
+    drawPane->render();
 }
 
 void MyFrame::OnSliderTau(wxCommandEvent &event)
 {
-    drawPane->cld.tau = slider_t->GetValue() / 10000.0;
+    drawPane->cld().tau = slider_t->GetValue() / 10000.0;
     wxString s;
-    s.Printf("Thresholding(Tau) : %.3f", drawPane->cld.tau);
+    s.Printf("Thresholding (tau): %.3f", drawPane->cld().tau);
     slider_t_t->SetLabel(s);
 
-    drawPane->cld.binaryThresholding(drawPane->cld.FDoG, drawPane->cld.result, drawPane->cld.tau);
-    drawPane->paintNow(true); //execute action
+    drawPane->cld().binaryThresholding(drawPane->cld().FDoG, drawPane->cld().result, drawPane->cld().tau);
+    drawPane->render();
 }
 
 void MyFrame::addlog(wxString info, const wxColour &color)
@@ -408,81 +400,69 @@ void MyFrame::addlog(wxString info, const wxColour &color)
     log->SetDefaultStyle(wxTextAttr(color));
     log->AppendText(s);
 }
-void MyFrame::activateRenderLoop(bool on)
+
+void MyFrame::SetRenderingState(bool on)
 {
     if (on) {
         start->SetLabel("Stop");
-        Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(MyFrame::onIdle));
+        Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(MyFrame::OnIdle));
         render_loop_on = true;
         addlog("-------Start iteration-------", wxColour(*wxBLACK));
-    } else {
-        start->SetLabel("Start");
-        Disconnect(wxEVT_IDLE, wxIdleEventHandler(MyFrame::onIdle));
-        //Connect(wxID_ANY, wxEVT_IDLE, wxIdleEventHandler(MyFrame::onIdle));
-        render_loop_on = false;
-        addlog("-------Stop iteration-------", wxColour(*wxBLACK));
+        return;
     }
+
+    start->SetLabel("Start");
+    Disconnect(wxEVT_IDLE, wxIdleEventHandler(MyFrame::OnIdle));
+    render_loop_on = false;
+    addlog("-------Stop iteration-------", wxColour(*wxBLACK));
 }
-void MyFrame::onIdle(wxIdleEvent &evt)
+
+void MyFrame::OnIdle(wxIdleEvent &evt)
 {
-    drawPane->paintNow(render_loop_on);
+    if (!render_loop_on) return;
+    drawPane->render();
     evt.RequestMore(); // render continuously, not only once on idle
 }
 #pragma endregion
 
-#pragma region BasicDrawPane
-BasicDrawPane::BasicDrawPane(wxPanel *parent, cv::Size s, bool canUndo)
-    : processing()
-    , cld(s)
+#pragma region DrawPane
+DrawPane::DrawPane(wxPanel *parent, cv::Size s)
+    : cld_(s)
     , wxPanel(parent)
 {
-    activateDraw = false;
 }
 
-
-//first frame
-void BasicDrawPane::paintEvent(wxPaintEvent &evt)
+// Main Render(iteration) Section
+void DrawPane::render()
 {
-    wxPaintDC dc(this);
-    //render(dc);
-    dis = cld.originalImg.clone();
-    dis.convertTo(dis, CV_8UC1, 255);
-    //cvtColor(dis, dis, CV_GRAY2RGB);
-    wxImage img(dis.cols, dis.rows, dis.data, true);
-    wxBitmap bmp(img);
-    dc.DrawBitmap(bmp, 0, 0);
-}
+    dis_ = cld_.originalImg.clone();
+    cv::cvtColor(dis_, dis_, CV_GRAY2BGR);
 
-//render loop
-void BasicDrawPane::paintNow(bool render_loop_on)
-{
-    wxClientDC dc(this);
-    render(dc, render_loop_on);
-}
-
-//Main Render(iteration) Section
-void BasicDrawPane::render(wxDC &dc, bool render_loop_on)
-{
-    dis = cld.originalImg.clone();
-    cv::cvtColor(dis, dis, CV_GRAY2BGR);
-
-    if (processingS == MODE_ETF) {
-        dis = processing.visualizeETF(cld.etf.flowField);
-        dis.convertTo(dis, CV_8UC1, 255);
-        cv::cvtColor(dis, dis, CV_GRAY2BGR);
-    } else if (processingS == MODE_ETF_DEBUG) {
-        processing.visualizeFlowfield(cld.etf.flowField, dis);
-    } else if (processingS == MODE_CLD) {
-        dis = cld.result.clone();
-        cv::cvtColor(dis, dis, CV_GRAY2BGR);
-    } else if (processingS == MODE_ANTI_ALIASING) {
-        dis = cld.result.clone();
-        dis = processing.antiAlias(dis);
-        cv::cvtColor(dis, dis, CV_GRAY2BGR);
+    if (mode_ == MODE_ETF) {
+        dis_ = postprocess::visualizeETF(cld_.etf.flowField);
+        dis_.convertTo(dis_, CV_8UC1, 255);
+        cv::cvtColor(dis_, dis_, CV_GRAY2BGR);
+    } else if (mode_ == MODE_ETF_DEBUG) {
+        dis_ = postprocess::visualizeFlowfield(cld_.etf.flowField);
+        dis_.convertTo(dis_, CV_8UC3, 255);
+        cv::cvtColor(dis_, dis_, CV_RGB2BGR);
+    } else if (mode_ == MODE_CLD) {
+        dis_ = cld_.result.clone();
+        cv::cvtColor(dis_, dis_, CV_GRAY2BGR);
+    } else if (mode_ == MODE_ANTI_ALIASING) {
+        dis_ = cld_.result.clone();
+        dis_ = postprocess::antiAlias(dis_);
+        cv::cvtColor(dis_, dis_, CV_GRAY2BGR);
     }
 
-    wxImage img(dis.cols, dis.rows, dis.data, true);
-    wxBitmap bmp(img);
+    wxBitmap bmp(wxImage(dis_.cols, dis_.rows, dis_.data, true));
+    wxClientDC dc(this);
     dc.DrawBitmap(bmp, 0, 0);
 }
+
+CLD &DrawPane::cld() { return cld_; }
+
+cv::Mat &DrawPane::image() { return dis_; }
+
+void DrawPane::set_mode(std::string s) { mode_ = s; }
 #pragma endregion
